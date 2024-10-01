@@ -33,13 +33,13 @@ const client = new MongoClient(uri, {
 });
 
 
-const logger = async (req, res, next) => {
-    console.log('called:', req.host, req.originalUrl)
-    next();
-}
+// const logger = async (req, res, next) => {
+//     console.log('called:', req.host, req.originalUrl)
+//     next();
+// }
 
 const verifyToken = async (req, res, next) => {
-    const token = req.cookies?.token;
+    const token = req.headers?.authorization?.split(" ")[1];
     console.log('value of token in middleware', token);
     if (!token) {
         return res.status(401).send({ message: 'not authorized' })
@@ -70,21 +70,24 @@ async function run() {
         const bookingCollection = client.db('carDoctor').collection('bookings');
 
         // auth related api
-        app.post('/jwt', logger, async (req, res) => {
+        app.post('/jwt', async (req, res) => {
             const user = req.body;
             console.log(user);
             const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
 
-            res
-                .cookie('token', token, {
-                    httpOnly: true,
-                    secure: false,
-                    sameSite: 'none'
-                })
-                .send({ success: true });
+            res.status(200).json({token: token})
+
+            // res
+                // .cookie('token', token, {
+                //     httpOnly: true,
+                //     secure: false,
+                //     sameSite: 'none'
+                // })
+                // .send({ success: true });
+
         })
         // services related api
-        app.get('/services', logger, async (req, res) => {
+        app.get('/services', async (req, res) => {
             const cursor = serviceCollection.find();
             const result = await cursor.toArray();
             res.send(result);
@@ -104,7 +107,7 @@ async function run() {
 
         // bookings
 
-        app.get('/bookings', logger, verifyToken, async (req, res) => {
+        app.get('/bookings', verifyToken, async (req, res) => {
             console.log(req.query.email);
             console.log('user in the valid token', req.user);
             // console.log('tok tok token', req.cookies.token);
